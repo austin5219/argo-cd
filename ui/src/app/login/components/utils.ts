@@ -71,7 +71,11 @@ const validateAndGetOIDCForPKCE = async (oidcConfig: AuthSettings['oidcConfig'])
 export const pkceLogin = async (oidcConfig: AuthSettings['oidcConfig'], redirectURI: string) => {
     const {authorizationServer} = await validateAndGetOIDCForPKCE(oidcConfig);
 
-    sessionStorage.setItem('return_uri', location.pathname + location.search)
+    // This sets the return path for the user after the pkce auth flow.
+    // This is ignored if the return path would be the login page as it would just loop.
+    if (!location.pathname.startsWith(requests.toAbsURL('/login'))) {
+        sessionStorage.setItem('return_uri', location.pathname + location.search);
+    }
 
     if (!authorizationServer.authorization_endpoint) {
         throw new PKCELoginError('No Authorization Server endpoint found');
@@ -156,6 +160,8 @@ export const pkceCallback = async (queryParams: string, oidcConfig: AuthSettings
 
     const returnURI = sessionStorage.getItem('return_uri');
 
+    // This returns the user to their previous path if saved in pkcelogin.
+    // This is to mirror the functionality of the dex auth flow return_url query parameter.
     if (returnURI) {
         sessionStorage.removeItem('return_uri');
         window.location.replace(returnURI);
