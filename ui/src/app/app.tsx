@@ -1,4 +1,4 @@
-import {DataLoader, NavigationManager, Notifications, NotificationsManager, PageContext, Popup, PopupManager, PopupProps} from 'argo-ui';
+import {DataLoader, NavigationManager, NotificationType, Notifications, NotificationsManager, PageContext, Popup, PopupManager, PopupProps} from 'argo-ui';
 import {createBrowserHistory} from 'history';
 import * as PropTypes from 'prop-types';
 import * as React from 'react';
@@ -11,7 +11,7 @@ import settings from './settings';
 import {Layout} from './shared/components/layout/layout';
 import {Page} from './shared/components/page/page';
 import {VersionPanel} from './shared/components/version-info/version-info-panel';
-import {AuthSettingsCtx, Provider} from './shared/context';
+import {AuthSettingsCtx, Context, Provider} from './shared/context';
 import {services} from './shared/services';
 import requests from './shared/services/requests';
 import {hashCode} from './shared/utils';
@@ -102,9 +102,15 @@ requests.onError.subscribe(async err => {
         const basehref = document.querySelector('head > base').getAttribute('href').replace(/\/$/, '');
         if (isSSO) {
             const authSettings = await services.authService.settings();
+            const ctx = React.useContext(Context);
 
             if (authSettings?.oidcConfig?.enablePKCEAuthentication) {
-                pkceLogin(authSettings.oidcConfig, getPKCERedirectURI().toString());
+                pkceLogin(authSettings.oidcConfig, getPKCERedirectURI().toString()).catch(err => {
+                    ctx.notifications.show({
+                        type: NotificationType.Error,
+                        content: err?.message || JSON.stringify(err)
+                    })
+                });
             } else {
                 window.location.href = `${basehref}/auth/login?return_url=${encodeURIComponent(location.href)}`;
             }
